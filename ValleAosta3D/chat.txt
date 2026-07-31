@@ -1,0 +1,390 @@
+﻿
+Ecco un riassunto completo pronto da incollare in una nuova chat.
+
+Progetto ValleAosta3D - Stato Attuale
+Obiettivo
+
+Realizzare un plastico 3D della Valle d'Aosta stampabile con una Entina Tina2 utilizzando dati altimetrici reali (DEM).
+
+Pipeline prevista:
+
+DEM (Copernicus)
+    ↓
+GeoTIFF
+    ↓
+float[,]
+    ↓
+HeightMap
+    ↓
+STL
+    ↓
+Suddivisione 3x2
+    ↓
+GCODE
+    ↓
+Stampa 3D
+
+Repository
+
+Repository GitHub creato.
+
+Struttura attuale:
+
+ValleAosta3D
+│
+├─ Data
+│   ├─ Cache
+│   └─ Output
+│
+├─ Infrastructure
+│
+├─ Models
+│
+├─ Services
+│
+├─ README.md
+├─ appsettings.json
+└─ Program.cs
+
+Configurazione
+Area
+
+Non usiamo più South/West/North/East in configurazione.
+
+Usiamo:
+
+"Area": {
+  "CenterLatitude": 45.75,
+  "CenterLongitude": 7.43
+}
+
+Modello
+"Model": {
+  "Scale": 400000,
+  "VerticalExaggeration": 4,
+  "TilesX": 3,
+  "TilesY": 2,
+  "TileSizeMm": 90,
+  "HorizontalResolutionMm": 0.1
+}
+
+Geometria modello
+
+Dimensione tessera:
+
+90 mm × 90 mm
+
+
+Numero tessere:
+
+3 × 2
+
+
+Dimensione complessiva:
+
+270 mm × 180 mm
+
+
+Scala:
+
+1:400000
+
+
+Copertura reale:
+
+108 km × 72 km
+
+
+Copertura singola tessera:
+
+36 km × 36 km
+
+Bounding Box
+
+Calcolato automaticamente con:
+
+GeoCalculator.CalculateBoundingBox(...)
+
+
+Risultato:
+
+South : 45.426608
+West  : 6.734823
+
+North : 46.073392
+East  : 8.125177
+
+Campionamento
+
+Risoluzione orizzontale target:
+
+0.1 mm
+
+
+Equivalenza:
+
+0.1 mm
+=
+40 m reali
+
+
+Campioni necessari per il modello finale:
+
+Width  = 2700
+Height = 1800
+
+
+Totale:
+
+4.860.000 punti
+
+DEM scelto
+
+Abbandonato TessaDEM:
+
+API a pagamento
+
+
+Scelto:
+
+OpenTopography
+COP30
+Copernicus Global DSM 30m
+
+
+È stata ottenuta una API Key gratuita.
+
+Swagger OpenTopography utilizzato con:
+
+GET /API/globaldem
+
+
+Parametri:
+
+demtype = COP30
+
+south = 45.426608
+north = 46.073392
+
+west  = 6.734823
+east  = 8.125177
+
+outputFormat = GTiff
+
+Download DEM
+
+File scaricato:
+
+cop30-valledaosta.tif
+
+
+Dimensioni:
+
+48.984.705 bytes
+
+
+Raster:
+
+5005 × 2328 pixel
+
+
+Totale campioni:
+
+11.651.640
+
+
+Questo è più dettagliato del necessario.
+
+Per ora si conserva il DEM completo.
+
+Analisi TIFF
+
+Libreria utilizzata:
+
+BitMiracle.LibTiff.NET
+
+
+Classe:
+
+GeoTiffInspector
+
+
+Risultati:
+
+Width           : 5005
+Height          : 2328
+
+BitsPerSample   : 32
+SamplesPerPixel : 1
+
+Compression     : LZW
+SampleFormat    : IEEEFP
+
+IsTiled         : True
+TileWidth       : 256
+TileHeight      : 256
+TileSize        : 262144
+
+Statistiche DEM
+
+La scansione dei tile funziona.
+
+Risultato:
+
+Min elevation : 213.00 m
+Max elevation : 4810.72 m
+
+
+Il massimo coincide praticamente con il Monte Bianco.
+
+Conclusione:
+
+DEM corretto
+Parsing corretto
+Quote corrette
+
+Preview generata
+
+Classe:
+
+HeightMapGenerator
+
+
+Metodo:
+
+GeneratePreviewPng(...)
+
+
+Output:
+
+preview.png
+
+
+Generata con:
+
+quota minima -> nero
+quota massima -> bianco
+
+
+Risultato molto buono.
+
+Si riconoscono:
+
+Valle principale
+Valli laterali
+Creste montuose
+
+Hillshade
+
+Metodo aggiunto:
+
+GenerateHillshadePng(...)
+
+
+Output:
+
+preview-hillshade.png
+
+
+Risultato:
+
+corretto
+simile a una mappa in rilievo
+nessun artefatto visibile
+parsing DEM confermato
+GeoCalculator
+
+Esiste già e contiene:
+
+GetModelWidthMm()
+GetModelHeightMm()
+
+GetRealWidthKm()
+GetRealHeightKm()
+
+GetTileWidthKm()
+GetTileHeightKm()
+
+GetMetersPerSample()
+
+GetRequiredWidthSamples()
+GetRequiredHeightSamples()
+
+CalculateBoundingBox()
+
+
+Tutti i metodi pubblici sono documentati con XML comments.
+
+Richiesta dell'utente:
+
+Aggiungere sempre XML Documentation
+(<summary>, <param>, <returns>)
+ai metodi pubblici.
+
+Decisioni progettuali
+Conservare il DEM originale
+
+Non effettuare ancora downsampling.
+
+Master:
+
+5005 × 2328
+
+
+rimane in cache.
+
+Niente STL per ora
+
+Prima:
+
+GeoTIFF
+↓
+HeightMap
+↓
+Validazione
+
+
+Poi:
+
+STL
+
+Cache
+
+Tutti i download devono essere conservati in:
+
+Data/Cache
+
+
+L'app deve poter lavorare offline dopo il primo download.
+
+Prossima milestone
+
+Refactoring:
+
+GeoTiffReader
+
+
+con API:
+
+float[,] ReadElevations(string path)
+
+
+Obiettivo:
+
+Leggere il TIFF una sola volta e riutilizzare i dati per:
+
+Preview
+Hillshade
+STL
+
+
+Successivamente:
+
+GeoTiffReader
+    ↓
+float[,]
+    ↓
+StlGenerator
+
+
+per generare il primo STL della Valle d'Aosta. 🏔️🚀

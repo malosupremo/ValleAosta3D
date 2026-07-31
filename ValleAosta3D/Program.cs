@@ -11,7 +11,7 @@ AppOptions options =
     configuration.Get<AppOptions>()
     ?? throw new InvalidOperationException("Invalid configuration");
 
-ApplicationFolders _ = new(options);
+ApplicationFolders folders = new(options);
 
 Console.WriteLine();
 Console.WriteLine("Model");
@@ -57,3 +57,44 @@ Console.WriteLine($"South : {bbox.South:F6}");
 Console.WriteLine($"West  : {bbox.West:F6}");
 Console.WriteLine($"North : {bbox.North:F6}");
 Console.WriteLine($"East  : {bbox.East:F6}");
+
+Console.WriteLine();
+Console.WriteLine("Sampling");
+Console.WriteLine("--------");
+
+Console.WriteLine(
+    $"Horizontal resolution : {options.Model.HorizontalResolutionMm} mm");
+
+Console.WriteLine(
+    $"Meters per sample     : {GeoCalculator.GetMetersPerSample(options.Model):N1} m");
+
+Console.WriteLine(
+    $"Width samples         : {GeoCalculator.GetRequiredWidthSamples(options.Model):N0}");
+
+Console.WriteLine(
+    $"Height samples        : {GeoCalculator.GetRequiredHeightSamples(options.Model):N0}");
+
+string tiffPath = Path.Combine(folders.Cache, "cop30-valledaosta.tif");
+
+GeoTiffInspector.PrintInfo(tiffPath);
+GeoTiffInspector.PrintStatistics(tiffPath);
+
+string inputFile =
+    Path.Combine(
+        folders.Cache,
+        "cop30-valledaosta.tif");
+
+string outputFile =
+    Path.Combine(
+        folders.Output,
+        "preview.png");
+
+HeightMapGenerator.GeneratePreviewPng(
+    inputFile,
+    outputFile);
+
+HeightMapGenerator.GenerateHillshadePng(
+    inputFile,
+    Path.Combine(
+        folders.Output,
+        "preview-hillshade.png"));

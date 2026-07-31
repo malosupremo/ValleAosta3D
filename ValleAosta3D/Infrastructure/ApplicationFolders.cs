@@ -2,12 +2,30 @@
 
 namespace ValleAosta3D.Infrastructure;
 
+/// <summary>
+/// Provides the folder paths used by the application.
+/// </summary>
 public sealed class ApplicationFolders
 {
+    /// <summary>
+    /// Root path of the project.
+    /// </summary>
     public string Root { get; }
+
+    /// <summary>
+    /// Path of the cache folder.
+    /// </summary>
     public string Cache { get; }
+
+    /// <summary>
+    /// Path of the output folder.
+    /// </summary>
     public string Output { get; }
 
+    /// <summary>
+    /// Initializes the folder paths and creates them if they do not exist.
+    /// </summary>
+    /// <param name="options">Application configuration options.</param>
     public ApplicationFolders(AppOptions options)
     {
         Root = Path.GetFullPath(

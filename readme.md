@@ -1,82 +1,36 @@
 # ValleAosta3D
 
-Progetto personale per la generazione e stampa 3D di un modello fisico della Valle d'Aosta utilizzando dati DEM (Digital Elevation Model) ad alta risoluzione.
-
-## Obiettivo
-
-Realizzare un plastico della Valle d'Aosta stampabile con una stampante 3D desktop (Entina Tina2), suddiviso in più tessere assemblabili.
-
-L'obiettivo finale è:
-
-- scaricare dati altimetrici reali;
-- generare una heightmap;
-- creare automaticamente mesh STL;
-- suddividere il modello in tessere stampabili;
-- esportare gli STL da utilizzare nello slicer per la generazione del GCODE.
+Progetto personale per la generazione e stampa 3D di un modello fisico della Valle d'Aosta utilizzando dati altimetrici reali (DEM).
 
 ---
 
-# Specifiche del progetto
+# Obiettivo
 
-## Scala
+Realizzare un plastico della Valle d'Aosta stampabile con una stampante 3D desktop, partendo da un Digital Elevation Model (DEM) reale.
 
-Scala orizzontale:
-
-```text
-1 : 400.000
-```
-
-Significa:
+Pipeline prevista:
 
 ```text
-1 mm = 400 m
-1 cm = 4 km
-```
-
-## Dimensioni finali
-
-Target:
-
-```text
-27 cm x 18 cm
-```
-
-Equivalenti a:
-
-```text
-108 km x 72 km
-```
-
-nel mondo reale.
-
-## Esagerazione verticale
-
-Per migliorare la leggibilità del terreno:
-
-```text
-Vertical Exaggeration = 4x
-```
-
-Esempio:
-
-```text
-Monte Bianco = 4810 m
-4810 / 400000 = 12 mm
-
-12 mm x 4 = 48 mm
-```
-
-Altezza risultante:
-
-```text
-circa 4.8 cm
+DEM
+ ↓
+Heightmap
+ ↓
+Mesh STL
+ ↓
+Suddivisione in tessere
+ ↓
+Slicer
+ ↓
+GCODE
+ ↓
+Stampa 3D
 ```
 
 ---
 
-# Stampante
+# Hardware
 
-Modello:
+## Stampante
 
 ```text
 Entina Tina2
@@ -88,44 +42,99 @@ Caratteristiche considerate:
 Volume utile:
 100 x 105 x 100 mm circa
 
-Dimensione tassello:
-90 x 90 mm
+Ugello:
+0.4 mm
 
 Layer tipico:
 0.15 mm
 
 Layer fine:
 0.06 mm
-
-Ugello:
-0.4 mm
 ```
-
-La risoluzione reale del modello sarà limitata principalmente dal nozzle da 0.4 mm.
 
 ---
 
-# Suddivisione del modello
+# Modello
 
-Ogni tessera:
-
-```text
-90 x 90 mm
-```
-
-Alla scala scelta:
+## Scala orizzontale
 
 ```text
-90 mm = 36 km
+1 : 400.000
 ```
 
-Configurazione:
+Equivalenze:
 
 ```text
-3 colonne x 2 righe
+1 mm = 400 m
+1 cm = 4 km
 ```
 
-Schema:
+---
+
+## Esagerazione verticale
+
+```text
+4x
+```
+
+Motivazione:
+
+A scala reale, il Monte Bianco sarebbe alto circa:
+
+```text
+4810 m / 400000
+=
+12 mm
+```
+
+Con un'esagerazione verticale di 4x:
+
+```text
+12 mm x 4
+=
+48 mm
+```
+
+Il modello risulta molto più leggibile e spettacolare.
+
+---
+
+# Dimensioni del plastico
+
+## Configurazione attuale
+
+```text
+Tiles X       = 3
+Tiles Y       = 2
+
+Tile Size     = 90 mm
+```
+
+Dimensioni finali:
+
+```text
+270 mm x 180 mm
+```
+
+ovvero:
+
+```text
+27 cm x 18 cm
+```
+
+---
+
+## Copertura reale
+
+Alla scala configurata:
+
+```text
+108 km x 72 km
+```
+
+---
+
+## Suddivisione
 
 ```text
 +-----+-----+-----+
@@ -135,245 +144,297 @@ Schema:
 +-----+-----+-----+
 ```
 
-Dimensione assemblata:
-
-```text
-27 cm x 18 cm
-```
-
-Totale tessere:
+Numero totale tessere:
 
 ```text
 6
+```
+
+Dimensione di ogni tessera:
+
+```text
+90 mm x 90 mm
+```
+
+Copertura reale di una tessera:
+
+```text
+36 km x 36 km
 ```
 
 ---
 
 # Area geografica
 
-## Regione
-
-Valle d'Aosta
-
-Coordinate centrali approssimative:
+## Centro
 
 ```text
-Latitudine : 45.750
-Longitudine: 7.430
+Latitudine  = 45.750000
+Longitudine = 7.430000
 ```
 
-## Bounding Box del plastico
+Il centro è stato scelto per mantenere la Valle d'Aosta approssimativamente al centro del modello.
 
-Calcolato per coprire:
+---
 
-```text
-108 km x 72 km
-```
+## Bounding Box calcolato
 
-con la Valle d'Aosta approssimativamente centrata.
+Derivato automaticamente da:
 
-Coordinate utilizzate:
+- centro geografico
+- scala
+- dimensioni modello
 
-```text
-South = 45.426
-West  = 6.734
-
-North = 46.074
-East  = 8.126
-```
-
-Formato API:
+Coordinate attuali:
 
 ```text
-SW = 45.426,6.734
-NE = 46.074,8.126
+South = 45.426608
+West  = 6.734823
+
+North = 46.073392
+East  = 8.125177
 ```
 
 ---
 
-# Sorgente dati altimetrici
+# Risoluzione orizzontale
 
-## TessaDEM
+Configurazione attuale:
 
-Sito:
+```text
+0.1 mm
+```
 
-https://tessadem.com/
+Interpretazione:
 
-Documentazione API:
+```text
+0.1 mm sul modello
+=
+40 m reali
+```
 
-https://tessadem.com/elevation-api/
+---
 
-Caratteristiche principali:
+## Campionamento teorico
 
-- DEM globale
-- risoluzione spaziale nominale 30 m
+Dimensioni del modello:
+
+```text
+270 mm x 180 mm
+```
+
+Con risoluzione:
+
+```text
+0.1 mm
+```
+
+si ottiene:
+
+```text
+Width Samples  = 2700
+Height Samples = 1800
+```
+
+Totale:
+
+```text
+4.860.000 campioni
+```
+
+---
+
+# Dati altimetrici
+
+## Sorgente selezionata
+
+OpenTopography
+
+Dataset:
+
+```text
+COP30
+Copernicus Global DSM 30m
+```
+
+Motivazioni:
+
+- gratuito
+- disponibile via API
 - output GeoTIFF
-- API HTTP
-- modalità:
-  - points
-  - path
-  - area
-
-Per questo progetto verrà utilizzata:
-
-```text
-mode=area
-```
-
-e:
-
-```text
-format=geotiff
-```
+- qualità sufficiente per il progetto
+- copertura globale
 
 ---
 
-# Chiamata API prevista
+# Test effettuati
 
-Template:
+## Download ridotto
+
+Bounding box ridotto.
+
+Risultato:
 
 ```text
-https://tessadem.com/api/elevation
-?key=API_KEY
-&mode=area
-&rows=128
-&columns=128
-&format=geotiff
-&locations=45.426,6.734|46.074,8.126
+720 x 360 pixel
+~1 MB
 ```
+
+Verificato:
+
+- download corretto
+- GeoTIFF valido
+- file prodotto da GDAL
 
 ---
 
-# Architettura prevista
+## Download completo
 
-## Fase iniziale
-
-Un singolo progetto console:
+Bounding box dell'intero plastico:
 
 ```text
-ValleAosta3D.Console
+South = 45.426608
+West  = 6.734823
+
+North = 46.073392
+East  = 8.125177
 ```
 
-Obiettivo:
+Risultato:
 
 ```text
-Scaricare il primo GeoTIFF
+5005 x 2328 pixel
+48.984.705 bytes
 ```
 
-Nessuna complessità aggiuntiva.
+Osservazioni:
+
+```text
+5005 x 2328
+=
+11.651.640 campioni
+```
+
+Il dataset scaricato contiene più dettaglio di quanto il modello possa sfruttare.
+
+Questo è ideale perché permette successivi processi di riduzione controllata.
 
 ---
 
-# Pipeline prevista
+# Cache
+
+Tutti i dati scaricati devono essere salvati localmente.
+
+Struttura prevista:
 
 ```text
-TessaDEM API
-        |
-        V
-    GeoTIFF
-        |
-        V
-   float[,]
-        |
-        V
- Heightmap PNG
-        |
-        V
-   Mesh STL
-        |
-        V
- Suddivisione 3x2
-        |
-        V
-    STL finali
-        |
-        V
-      GCODE
-```
-
----
-
-# Struttura repository (provvisoria)
-
-```text
-ValleAosta3D
+Data
 |
-+-- src
++-- Cache
 |    |
-|    +-- ValleAosta3D.Console
+|    +-- cop30-valle-aosta.tif
 |
-+-- docs
-|
-+-- samples
-|
-+-- README.md
++-- Output
 ```
+
+Il progetto deve poter funzionare anche offline dopo il primo download.
 
 ---
 
-# Milestone
+# Stato del progetto
 
-## Milestone 1
+## Completato
 
-Scaricare un GeoTIFF valido dal servizio TessaDEM.
+- [x] Repository GitHub creato
+- [x] README iniziale
+- [x] .editorconfig
+- [x] Configurazione tramite appsettings.json
+- [x] Modello tipizzato delle opzioni
+- [x] Struttura cartelle
+- [x] Calcolo dimensioni modello
+- [x] Calcolo bounding box
+- [x] Calcolo campionamento teorico
+- [x] Ottenimento API Key OpenTopography
+- [x] Download DEM completo
+- [x] Validazione GeoTIFF
 
-Output atteso:
+---
+
+## Prossima milestone
+
+Analisi del GeoTIFF.
+
+Installare:
 
 ```text
-Output/valle-aosta-128.tif
+BitMiracle.LibTiff.NET
 ```
+
+e creare:
+
+```text
+GeoTiffInspector
+```
+
+con lettura di:
+
+- Width
+- Height
+- BitsPerSample
+- SamplesPerPixel
+- Compression
+- SampleFormat
+- Min Elevation
+- Max Elevation
+- NoData Value
 
 ---
 
-## Milestone 2
+## Milestone successive
 
-Leggere il GeoTIFF.
+### Preview
 
-Obiettivo:
-
-```csharp
-float[,] elevations;
+```text
+GeoTIFF
+ ↓
+PNG grayscale
 ```
-
-Verificare:
-
-- quota minima
-- quota massima
-- dimensioni della griglia
-
----
-
-## Milestone 3
-
-Generare una PNG grayscale.
-
-Verifica visiva del DEM.
 
 Output:
 
 ```text
-valle-aosta.png
+Data/Output/preview.png
 ```
 
 ---
 
-## Milestone 4
-
-Generare uno STL unico.
-
-Output:
+### Terrain Model
 
 ```text
-valle-aosta.stl
+GeoTIFF
+ ↓
+float[,]
+ ↓
+HeightMap
 ```
 
 ---
 
-## Milestone 5
+### STL
 
-Suddividere automaticamente il modello.
+```text
+HeightMap
+ ↓
+Mesh triangolare
+ ↓
+STL Binary
+```
 
-Output:
+---
+
+### Tile Split
+
+Generazione automatica di:
 
 ```text
 tile_00.stl
@@ -387,56 +448,22 @@ tile_12.stl
 
 ---
 
-## Milestone 6
+### Stampa
 
-Aggiungere:
-
-- base del modello
-- incastri
-- magneti
-- etichette
-- ottimizzazione mesh
+```text
+STL
+ ↓
+Slicer
+ ↓
+GCODE
+ ↓
+Entina Tina2
+```
 
 ---
 
-# Note tecniche
+# Considerazioni
 
-## Risoluzione DEM
+Il download completo del DEM (~49 MB, 5005x2328 pixel) rappresenta il primo vero dato geografico del progetto.
 
-DEM TessaDEM:
-
-```text
-30 m
-```
-
-Alla scala:
-
-```text
-30 m / 400000
-=
-0.075 mm
-```
-
-sul modello.
-
-Questo significa che il dataset sorgente possiede una risoluzione molto più elevata di quella realmente stampabile.
-
-Probabilmente sarà necessario un downsampling prima della generazione della mesh.
-
-## Strategia consigliata
-
-NON generare prima gli STL.
-
-Procedere invece in questo ordine:
-
-```text
-DEM
- ->
-PNG Heightmap
- ->
-Verifica visiva
- ->
-STL
-```
-
-Le immagini sono molto più semplici da validare e debuggare rispetto a una mesh triangolare.
+La risoluzione ottenuta è superiore alla risoluzione teoricamente necessaria per il modello finale, rendendo il dataset una base eccellente per la generazione della heightmap e delle successive mesh STL.

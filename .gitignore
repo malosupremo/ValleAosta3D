@@ -11,8 +11,8 @@
 *.sln.docstates
 *.env
 
-Data/Cache/*
-Data/Output/*
+#Data/Cache/*
+#Data/Output/*
 
 !Data/Cache/.gitkeep
 !Data/Output/.gitkeep
