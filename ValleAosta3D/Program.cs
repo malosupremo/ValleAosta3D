@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
-using ValleAosta3D;
+using ValleAosta3D.Infrastructure;
+using ValleAosta3D.Models;
 
 IConfigurationRoot configuration = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json")
@@ -9,5 +10,8 @@ AppOptions options =
     configuration.Get<AppOptions>()
     ?? throw new InvalidOperationException("Invalid configuration");
 
-Console.WriteLine($"Scale: 1:{options.Model.Scale}");
-Console.WriteLine($"Vertical: {options.Model.VerticalExaggeration}x");
+ApplicationFolders folders = new(options);
+
+Console.WriteLine($"Root  : {folders.Root}");
+Console.WriteLine($"Cache : {folders.Cache}");
+Console.WriteLine($"Output: {folders.Output}");

@@ -1,4 +1,6 @@
-﻿namespace ValleAosta3D.Models;
+﻿using ValleAosta3D.Models;
+
+namespace ValleAosta3D.Infrastructure;
 
 public static class ModelExtensions
 {
