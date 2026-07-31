@@ -1,5 +1,12 @@
 ﻿namespace ValleAosta3D;
 
+public sealed class AppOptions
+{
+    public AreaOptions Area { get; set; } = new();
+    public ModelOptions Model { get; set; } = new();
+    public FolderOptions Folders { get; set; } = new();
+}
+
 public sealed class AreaOptions
 {
     public double South { get; set; }
