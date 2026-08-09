@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System.Globalization;
+using Microsoft.Extensions.Configuration;
 using ValleAosta3D.Infrastructure;
 using ValleAosta3D.Models;
 using ValleAosta3D.Services;
@@ -20,16 +21,28 @@ if (string.IsNullOrWhiteSpace(options.OpenTopography.ApiKey))
 
 ApplicationFolders folders = new(options);
 
+IReadOnlyList<AreaCatalogEntry> areaCatalog = LoadAreaCatalog();
+AreaCatalogEntry selectedArea = PromptAreaSelection(areaCatalog);
+
+AreaOptions selectedAreaOptions = new()
+{
+    South = selectedArea.South,
+    West = selectedArea.West,
+    North = selectedArea.North,
+    East = selectedArea.East,
+    DownloadPaddingPercentPerSide = options.Area.DownloadPaddingPercentPerSide
+};
+
 BoundingBox sourceBbox =
     GeoCalculator.CalculateSourceBoundingBox(
-        options.Area,
+        selectedAreaOptions,
         options.Model);
 
 BoundingBox paddedDownloadBbox =
     GeoCalculator.CalculateDownloadBoundingBox(
-        options.Area,
+        selectedAreaOptions,
         options.Model,
-        options.Area.DownloadPaddingPercentPerSide);
+        selectedAreaOptions.DownloadPaddingPercentPerSide);
 
 BoundingBox downloadBbox =
     GeoCalculator.ExpandToMinimumTileGrid(
@@ -91,7 +104,7 @@ Console.WriteLine($"Per tile   : {GeoCalculator.GetTileWidthKm(options.Model):N1
 Console.WriteLine();
 Console.WriteLine("Source bounding box");
 Console.WriteLine("-------------------");
-Console.WriteLine("Input source : Extremes");
+Console.WriteLine($"Input source : {selectedArea.Name} (Areas.csv)");
 
 Console.WriteLine($"South : {sourceBbox.South:F6}");
 Console.WriteLine($"West  : {sourceBbox.West:F6}");
@@ -105,7 +118,7 @@ Console.WriteLine(
 Console.WriteLine();
 Console.WriteLine("Download bounding box");
 Console.WriteLine("---------------------");
-Console.WriteLine($"Padding per side: {options.Area.DownloadPaddingPercentPerSide:P0}");
+Console.WriteLine($"Padding per side: {selectedAreaOptions.DownloadPaddingPercentPerSide:P0}");
 Console.WriteLine($"Padded size     : {GeoCalculator.GetBoundingBoxWidthKm(paddedDownloadBbox):N1} km x {GeoCalculator.GetBoundingBoxHeightKm(paddedDownloadBbox):N1} km");
 Console.WriteLine($"Final size      : {GeoCalculator.GetBoundingBoxWidthKm(downloadBbox):N1} km x {GeoCalculator.GetBoundingBoxHeightKm(downloadBbox):N1} km");
 
@@ -299,3 +312,161 @@ if (string.Equals(previewAnswer, "y", StringComparison.OrdinalIgnoreCase) ||
     string outputFile = Path.Combine(folders.Output, "preview.png");
     HeightMapGenerator.GeneratePreviewPng(previewElevations, outputFile);
 }
+
+static IReadOnlyList<AreaCatalogEntry> LoadAreaCatalog()
+{
+    string[] candidates =
+    [
+        Path.Combine(Directory.GetCurrentDirectory(), "Areas.csv"),
+        Path.Combine(Directory.GetCurrentDirectory(), "areas.csv"),
+        Path.Combine(AppContext.BaseDirectory, "Areas.csv"),
+        Path.Combine(AppContext.BaseDirectory, "areas.csv")
+    ];
+
+    string? csvPath = candidates.FirstOrDefault(File.Exists);
+
+    if (csvPath is null)
+    {
+        throw new FileNotFoundException(
+            "Areas.csv not found. Place 'Areas.csv' in the project root or output folder.");
+    }
+
+    string[] allLines = File.ReadAllLines(csvPath);
+    string[] lines = allLines.Where(line => !string.IsNullOrWhiteSpace(line)).ToArray();
+
+    if (lines.Length < 2)
+    {
+        throw new InvalidOperationException("Areas.csv must contain a header and at least one area row.");
+    }
+
+    char separator = lines[0].Contains(';') ? ';' : ',';
+    string[] header = lines[0].Split(separator).Select(cell => NormalizeHeader(cell)).ToArray();
+
+    int nameIndex = FindRequiredColumn(header, "area", "name", "nome");
+    int northIndex = FindRequiredColumn(header, "north", "nord");
+    int southIndex = FindRequiredColumn(header, "south", "sud");
+    int eastIndex = FindRequiredColumn(header, "east", "est");
+    int westIndex = FindRequiredColumn(header, "west", "ovest");
+
+    List<AreaCatalogEntry> entries = new();
+
+    for (int lineIndex = 1; lineIndex < lines.Length; lineIndex++)
+    {
+        string line = lines[lineIndex];
+        string[] cells = line.Split(separator);
+
+        int requiredCellCount = Math.Max(
+            Math.Max(nameIndex, northIndex),
+            Math.Max(Math.Max(southIndex, eastIndex), westIndex)) + 1;
+
+        if (cells.Length < requiredCellCount)
+        {
+            throw new InvalidOperationException(
+                $"Invalid Areas.csv row at line {lineIndex + 1}: not enough columns.");
+        }
+
+        string name = cells[nameIndex].Trim();
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new InvalidOperationException(
+                $"Invalid Areas.csv row at line {lineIndex + 1}: area name is empty.");
+        }
+
+        double north = ParseCoordinate(cells[northIndex], "north", lineIndex + 1);
+        double south = ParseCoordinate(cells[southIndex], "south", lineIndex + 1);
+        double east = ParseCoordinate(cells[eastIndex], "east", lineIndex + 1);
+        double west = ParseCoordinate(cells[westIndex], "west", lineIndex + 1);
+
+        if (south >= north)
+        {
+            throw new InvalidOperationException(
+                $"Invalid Areas.csv row at line {lineIndex + 1}: south must be smaller than north.");
+        }
+
+        if (west >= east)
+        {
+            throw new InvalidOperationException(
+                $"Invalid Areas.csv row at line {lineIndex + 1}: west must be smaller than east.");
+        }
+
+        entries.Add(new AreaCatalogEntry(name, south, west, north, east));
+    }
+
+    if (entries.Count == 0)
+    {
+        throw new InvalidOperationException("Areas.csv does not contain valid area rows.");
+    }
+
+    return entries;
+}
+
+static AreaCatalogEntry PromptAreaSelection(IReadOnlyList<AreaCatalogEntry> areaCatalog)
+{
+    Console.WriteLine();
+    Console.WriteLine("Available areas");
+    Console.WriteLine("---------------");
+
+    for (int i = 0; i < areaCatalog.Count; i++)
+    {
+        AreaCatalogEntry area = areaCatalog[i];
+        Console.WriteLine($"{i + 1,2}. {area.Name}");
+    }
+
+    while (true)
+    {
+        Console.WriteLine();
+        Console.Write($"Choose area [1-{areaCatalog.Count}]: ");
+        string? input = Console.ReadLine();
+
+        if (int.TryParse(input, NumberStyles.Integer, CultureInfo.InvariantCulture, out int choice) &&
+            choice >= 1 &&
+            choice <= areaCatalog.Count)
+        {
+            AreaCatalogEntry selected = areaCatalog[choice - 1];
+            Console.WriteLine($"Selected area: {selected.Name}");
+            return selected;
+        }
+
+        Console.WriteLine("Invalid selection. Enter a number from the list.");
+    }
+}
+
+static int FindRequiredColumn(string[] header, params string[] aliases)
+{
+    for (int i = 0; i < header.Length; i++)
+    {
+        if (aliases.Contains(header[i], StringComparer.OrdinalIgnoreCase))
+        {
+            return i;
+        }
+    }
+
+    throw new InvalidOperationException(
+        $"Areas.csv is missing required column. Expected one of: {string.Join(", ", aliases)}");
+}
+
+static string NormalizeHeader(string cell)
+{
+    return cell.Trim().Trim('\uFEFF', '"', '\'').ToLowerInvariant();
+}
+
+static double ParseCoordinate(string rawValue, string columnName, int lineNumber)
+{
+    string trimmed = rawValue.Trim();
+
+    if (!double.TryParse(trimmed, NumberStyles.Float, CultureInfo.InvariantCulture, out double value))
+    {
+        throw new InvalidOperationException(
+            $"Invalid {columnName} value '{trimmed}' at line {lineNumber} in Areas.csv.");
+    }
+
+    return value;
+}
+
+internal readonly record struct AreaCatalogEntry(
+    string Name,
+    double South,
+    double West,
+    double North,
+    double East);
