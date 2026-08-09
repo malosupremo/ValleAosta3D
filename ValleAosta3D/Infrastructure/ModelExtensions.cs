@@ -8,22 +8,22 @@ namespace ValleAosta3D.Infrastructure;
 public static class ModelExtensions
 {
     /// <summary>
-    /// Returns the width of the model in millimeters.
+    /// Returns the width of the model in millimeters from tile count.
     /// </summary>
-    /// <param name="model">Model parameters.</param>
-    /// <returns>The width of the model in millimeters.</returns>
-    public static int GetWidthMm(this ModelOptions model)
+    public static int GetWidthMm(
+        this ModelOptions model,
+        int tilesX)
     {
-        return model.TilesX * model.TileSizeMm;
+        return tilesX * model.TileSizeMm;
     }
 
     /// <summary>
-    /// Returns the height of the model in millimeters.
+    /// Returns the height of the model in millimeters from tile count.
     /// </summary>
-    /// <param name="model">Model parameters.</param>
-    /// <returns>The height of the model in millimeters.</returns>
-    public static int GetHeightMm(this ModelOptions model)
+    public static int GetHeightMm(
+        this ModelOptions model,
+        int tilesY)
     {
-        return model.TilesY * model.TileSizeMm;
+        return tilesY * model.TileSizeMm;
     }
 }

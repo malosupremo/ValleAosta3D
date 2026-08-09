@@ -22,13 +22,8 @@ public static class HeightMapGenerator
         string inputFile,
         string outputFile)
     {
-        using Tiff? image = Tiff.Open(inputFile, "r");
-
-        if (image is null)
-        {
-            throw new InvalidOperationException(
+        using Tiff? image = Tiff.Open(inputFile, "r") ?? throw new InvalidOperationException(
                 "Unable to open TIFF file.");
-        }
 
         int width =
             image.GetField(TiffTag.IMAGEWIDTH)![0].ToInt();
@@ -296,13 +291,8 @@ public static class HeightMapGenerator
         string inputFile,
         string outputFile)
     {
-        using Tiff? image = Tiff.Open(inputFile, "r");
-
-        if (image is null)
-        {
-            throw new InvalidOperationException(
+        using Tiff? image = Tiff.Open(inputFile, "r") ?? throw new InvalidOperationException(
                 "Unable to open TIFF file.");
-        }
 
         int width =
             image.GetField(TiffTag.IMAGEWIDTH)![0].ToInt();

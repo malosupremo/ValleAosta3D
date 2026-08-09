@@ -20,6 +20,44 @@ if (string.IsNullOrWhiteSpace(options.OpenTopography.ApiKey))
 
 ApplicationFolders folders = new(options);
 
+BoundingBox sourceBbox =
+    GeoCalculator.CalculateSourceBoundingBox(
+        options.Area,
+        options.Model);
+
+BoundingBox paddedDownloadBbox =
+    GeoCalculator.CalculateDownloadBoundingBox(
+        options.Area,
+        options.Model,
+        options.Area.DownloadPaddingPercentPerSide);
+
+BoundingBox downloadBbox =
+    GeoCalculator.ExpandToMinimumTileGrid(
+        paddedDownloadBbox,
+        options.Model,
+        out int tilesX,
+        out int tilesY,
+        out double snappedWidthKm,
+        out double snappedHeightKm);
+
+double modelWidthMm = GeoCalculator.GetModelWidthMm(snappedWidthKm, options.Model);
+double modelHeightMm = GeoCalculator.GetModelHeightMm(snappedHeightKm, options.Model);
+
+int targetWidth = GeoCalculator.GetRequiredWidthSamples(modelWidthMm, options.Model);
+int targetHeight = GeoCalculator.GetRequiredHeightSamples(modelHeightMm, options.Model);
+
+int widthRemainder = targetWidth % tilesX;
+if (widthRemainder != 0)
+{
+    targetWidth += tilesX - widthRemainder;
+}
+
+int heightRemainder = targetHeight % tilesY;
+if (heightRemainder != 0)
+{
+    targetHeight += tilesY - heightRemainder;
+}
+
 Console.WriteLine();
 Console.WriteLine("Model");
 Console.WriteLine("-----");
@@ -27,47 +65,33 @@ Console.WriteLine("-----");
 Console.WriteLine($"Scale      : 1:{options.Model.Scale:N0}");
 Console.WriteLine($"Vertical   : {options.Model.VerticalExaggeration}x");
 Console.WriteLine($"Base       : {options.Model.BaseThicknessMm:N1} mm");
+Console.WriteLine($"Tile size  : {options.Model.TileSizeMm:N0} mm");
 
 Console.WriteLine();
-
 Console.WriteLine("Physical size");
 Console.WriteLine("-------------");
 
-Console.WriteLine($"Width      : {GeoCalculator.GetModelWidthMm(options.Model):N0} mm");
-Console.WriteLine($"Height     : {GeoCalculator.GetModelHeightMm(options.Model):N0} mm");
+Console.WriteLine($"Width      : {modelWidthMm:N0} mm");
+Console.WriteLine($"Height     : {modelHeightMm:N0} mm");
 
 Console.WriteLine();
-
 Console.WriteLine("Real size");
 Console.WriteLine("---------");
 
-Console.WriteLine($"Width      : {GeoCalculator.GetRealWidthKm(options.Model):N1} km");
-Console.WriteLine($"Height     : {GeoCalculator.GetRealHeightKm(options.Model):N1} km");
+Console.WriteLine($"Width      : {snappedWidthKm:N1} km");
+Console.WriteLine($"Height     : {snappedHeightKm:N1} km");
 
 Console.WriteLine();
+Console.WriteLine("Tiles (auto)");
+Console.WriteLine("------------");
 
-Console.WriteLine("Tiles");
-Console.WriteLine("-----");
-
-Console.WriteLine($"{options.Model.TilesX} x {options.Model.TilesY}");
-Console.WriteLine($"{GeoCalculator.GetTileWidthKm(options.Model):N1} km per tile");
-
-BoundingBox sourceBbox =
-    GeoCalculator.CalculateSourceBoundingBox(
-        options.Area,
-        options.Model);
-
-BoundingBox downloadBbox =
-    GeoCalculator.CalculateDownloadBoundingBox(
-        options.Area,
-        options.Model,
-        options.Area.DownloadPaddingPercentPerSide);
+Console.WriteLine($"Layout     : {tilesX} x {tilesY}");
+Console.WriteLine($"Per tile   : {GeoCalculator.GetTileWidthKm(options.Model):N1} km x {GeoCalculator.GetTileHeightKm(options.Model):N1} km");
 
 Console.WriteLine();
 Console.WriteLine("Source bounding box");
 Console.WriteLine("-------------------");
-Console.WriteLine(
-    $"Input source : {(options.Area.HasExplicitBoundingBox ? "Extremes" : "Center + model size")}");
+Console.WriteLine("Input source : Extremes");
 
 Console.WriteLine($"South : {sourceBbox.South:F6}");
 Console.WriteLine($"West  : {sourceBbox.West:F6}");
@@ -81,13 +105,14 @@ Console.WriteLine(
 Console.WriteLine();
 Console.WriteLine("Download bounding box");
 Console.WriteLine("---------------------");
+Console.WriteLine($"Padding per side: {options.Area.DownloadPaddingPercentPerSide:P0}");
+Console.WriteLine($"Padded size     : {GeoCalculator.GetBoundingBoxWidthKm(paddedDownloadBbox):N1} km x {GeoCalculator.GetBoundingBoxHeightKm(paddedDownloadBbox):N1} km");
+Console.WriteLine($"Final size      : {GeoCalculator.GetBoundingBoxWidthKm(downloadBbox):N1} km x {GeoCalculator.GetBoundingBoxHeightKm(downloadBbox):N1} km");
 
 Console.WriteLine($"South : {downloadBbox.South:F6}");
 Console.WriteLine($"West  : {downloadBbox.West:F6}");
 Console.WriteLine($"North : {downloadBbox.North:F6}");
 Console.WriteLine($"East  : {downloadBbox.East:F6}");
-Console.WriteLine(
-    $"Size  : {GeoCalculator.GetBoundingBoxWidthKm(downloadBbox):N1} km x {GeoCalculator.GetBoundingBoxHeightKm(downloadBbox):N1} km");
 Console.WriteLine(
     $"Ratio : {GeoCalculator.GetBoundingBoxAspectRatio(downloadBbox):F3}");
 
@@ -101,11 +126,19 @@ Console.WriteLine(
 Console.WriteLine(
     $"Meters per sample     : {GeoCalculator.GetMetersPerSample(options.Model):N1} m");
 
-Console.WriteLine(
-    $"Width samples         : {GeoCalculator.GetRequiredWidthSamples(options.Model):N0}");
+Console.WriteLine($"Width samples         : {targetWidth:N0}");
+Console.WriteLine($"Height samples        : {targetHeight:N0}");
 
-Console.WriteLine(
-    $"Height samples        : {GeoCalculator.GetRequiredHeightSamples(options.Model):N0}");
+Console.WriteLine();
+Console.Write($"Proceed with auto tile layout {tilesX} x {tilesY}? [Y/n]: ");
+string? layoutAnswer = Console.ReadLine();
+
+if (string.Equals(layoutAnswer, "n", StringComparison.OrdinalIgnoreCase) ||
+    string.Equals(layoutAnswer, "no", StringComparison.OrdinalIgnoreCase))
+{
+    Console.WriteLine("Operation cancelled by user.");
+    return;
+}
 
 DemCacheService cacheService = new(folders);
 OpenTopographyDemDownloader demDownloader = new(
@@ -116,9 +149,6 @@ string tiffPath = await demDownloader.DownloadAsync(downloadBbox);
 
 GeoTiffInspector.PrintInfo(tiffPath);
 GeoTiffInspector.PrintStatistics(tiffPath);
-
-int targetWidth = GeoCalculator.GetRequiredWidthSamples(options.Model);
-int targetHeight = GeoCalculator.GetRequiredHeightSamples(options.Model);
 
 ResampledDemCacheService resampledCacheService = new(folders);
 string resampledCacheKey = ResampledDemCacheService.BuildCacheKey(
@@ -192,15 +222,15 @@ string? stlAnswer = Console.ReadLine();
 if (string.Equals(stlAnswer, "y", StringComparison.OrdinalIgnoreCase) ||
     string.Equals(stlAnswer, "yes", StringComparison.OrdinalIgnoreCase))
 {
-    if (resampledMetadata.TargetWidth % options.Model.TilesX != 0 ||
-        resampledMetadata.TargetHeight % options.Model.TilesY != 0)
+    if (resampledMetadata.TargetWidth % tilesX != 0 ||
+        resampledMetadata.TargetHeight % tilesY != 0)
     {
         throw new InvalidOperationException(
-            "Resampled grid size is not divisible by the configured tile layout.");
+            "Resampled grid size is not divisible by the auto tile layout.");
     }
 
-    int tileWidthSamples = resampledMetadata.TargetWidth / options.Model.TilesX;
-    int tileHeightSamples = resampledMetadata.TargetHeight / options.Model.TilesY;
+    int tileWidthSamples = resampledMetadata.TargetWidth / tilesX;
+    int tileHeightSamples = resampledMetadata.TargetHeight / tilesY;
 
     double elevationScaleMmPerMeter =
         (1000.0 / options.Model.Scale) * options.Model.VerticalExaggeration;
@@ -214,14 +244,13 @@ if (string.Equals(stlAnswer, "y", StringComparison.OrdinalIgnoreCase) ||
         BaseThicknessMm = options.Model.BaseThicknessMm
     };
 
-    StlGenerator stlGenerator = new();
     string stlFolder = Path.Combine(folders.Output, "Stl");
 
-    for (int tileYFromBottom = 0; tileYFromBottom < options.Model.TilesY; tileYFromBottom++)
+    for (int tileYFromBottom = 0; tileYFromBottom < tilesY; tileYFromBottom++)
     {
-        for (int tileX = 0; tileX < options.Model.TilesX; tileX++)
+        for (int tileX = 0; tileX < tilesX; tileX++)
         {
-            int sourceTileY = (options.Model.TilesY - 1) - tileYFromBottom;
+            int sourceTileY = (tilesY - 1) - tileYFromBottom;
             int startX = tileX * tileWidthSamples;
             int startY = sourceTileY * tileHeightSamples;
 
@@ -238,7 +267,7 @@ if (string.Equals(stlAnswer, "y", StringComparison.OrdinalIgnoreCase) ||
             int tileLabelY = tileYFromBottom + 1;
             string stlPath = Path.Combine(stlFolder, $"tile-{tileLabelX}_{tileLabelY}.stl");
 
-            int triangleCount = stlGenerator.GenerateBinaryStl(
+            int triangleCount = StlGenerator.GenerateBinaryStl(
                 tileElevations,
                 stlPath,
                 stlOptions);

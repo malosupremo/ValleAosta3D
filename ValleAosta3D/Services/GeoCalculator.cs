@@ -3,59 +3,55 @@
 namespace ValleAosta3D.Services;
 
 /// <summary>
-/// Provides methods for calculating the model's dimensions and geographic bounds.
+/// Provides methods for calculating model dimensions and geographic bounds.
 /// </summary>
 public static class GeoCalculator
 {
     private const double KilometersPerLatitudeDegree = 111.32;
 
     /// <summary>
-    /// Returns the physical width of the model in millimeters.
+    /// Returns the physical width of the model in millimeters from real-world width and scale.
     /// </summary>
-    /// <param name="model">Model parameters.</param>
-    /// <returns>The width of the model in millimeters.</returns>
-    public static double GetModelWidthMm(ModelOptions model)
+    public static double GetModelWidthMm(
+        double realWidthKm,
+        ModelOptions model)
     {
-        return model.TilesX * model.TileSizeMm;
+        return realWidthKm * 1_000_000d / model.Scale;
     }
 
     /// <summary>
-    /// Returns the physical height of the model in millimeters.
+    /// Returns the physical height of the model in millimeters from real-world height and scale.
     /// </summary>
-    /// <param name="model">Model parameters.</param>
-    /// <returns>The height of the model in millimeters.</returns>
-    public static double GetModelHeightMm(ModelOptions model)
+    public static double GetModelHeightMm(
+        double realHeightKm,
+        ModelOptions model)
     {
-        return model.TilesY * model.TileSizeMm;
+        return realHeightKm * 1_000_000d / model.Scale;
     }
 
     /// <summary>
-    /// Returns the width covered by the model in the real world,
-    /// expressed in kilometers.
+    /// Returns the real-world width covered by a model width in millimeters.
     /// </summary>
-    /// <param name="model">Model parameters.</param>
-    /// <returns>The real-world width of the model in kilometers.</returns>
-    public static double GetRealWidthKm(ModelOptions model)
+    public static double GetRealWidthKm(
+        double modelWidthMm,
+        ModelOptions model)
     {
-        return GetModelWidthMm(model) * model.Scale / 1_000_000d;
+        return modelWidthMm * model.Scale / 1_000_000d;
     }
 
     /// <summary>
-    /// Returns the height covered by the model in the real world,
-    /// expressed in kilometers.
+    /// Returns the real-world height covered by a model height in millimeters.
     /// </summary>
-    /// <param name="model">Model parameters.</param>
-    /// <returns>The real-world height of the model in kilometers.</returns>
-    public static double GetRealHeightKm(ModelOptions model)
+    public static double GetRealHeightKm(
+        double modelHeightMm,
+        ModelOptions model)
     {
-        return GetModelHeightMm(model) * model.Scale / 1_000_000d;
+        return modelHeightMm * model.Scale / 1_000_000d;
     }
 
     /// <summary>
     /// Returns the width of a single tile in the real world.
     /// </summary>
-    /// <param name="model">Model parameters.</param>
-    /// <returns>The width of a tile in kilometers.</returns>
     public static double GetTileWidthKm(ModelOptions model)
     {
         return model.TileSizeMm * model.Scale / 1_000_000d;
@@ -64,90 +60,87 @@ public static class GeoCalculator
     /// <summary>
     /// Returns the height of a single tile in the real world.
     /// </summary>
-    /// <param name="model">Model parameters.</param>
-    /// <returns>The height of a tile in kilometers.</returns>
     public static double GetTileHeightKm(ModelOptions model)
     {
         return model.TileSizeMm * model.Scale / 1_000_000d;
     }
 
     /// <summary>
-    /// Calculates the geographic rectangle covered by the physical model,
-    /// centered on the configured area center.
-    /// </summary>
-    /// <param name="area">Coordinates of the area center.</param>
-    /// <param name="model">Physical parameters of the model.</param>
-    /// <returns>Bounding box expressed as geographic South/West/North/East coordinates.</returns>
-    public static BoundingBox CalculateBoundingBox(
-        AreaOptions area,
-        ModelOptions model)
-    {
-        return BuildCenteredBoundingBox(
-            area.CenterLatitude,
-            area.CenterLongitude,
-            GetRealWidthKm(model),
-            GetRealHeightKm(model));
-    }
-
-    /// <summary>
     /// Calculates the source bounding box for terrain acquisition.
-    /// If explicit bounds are configured in <paramref name="area"/>, those are used.
-    /// Otherwise a center-based box is generated from the model size.
+    /// Requires explicit South/West/North/East bounds.
     /// </summary>
-    /// <param name="area">Area configuration.</param>
-    /// <param name="model">Physical parameters of the model.</param>
-    /// <returns>Source bounding box expressed as South/West/North/East.</returns>
     public static BoundingBox CalculateSourceBoundingBox(
         AreaOptions area,
-        ModelOptions model)
+        ModelOptions _)
     {
-        if (area.HasExplicitBoundingBox)
+        if (!area.HasExplicitBoundingBox)
         {
-            BoundingBox configuredBoundingBox = new(
-                South: area.South!.Value,
-                West: area.West!.Value,
-                North: area.North!.Value,
-                East: area.East!.Value);
-
-            ValidateBoundingBox(configuredBoundingBox, nameof(area));
-
-            return configuredBoundingBox;
+            throw new InvalidOperationException(
+                "Automatic tile layout requires explicit Area South/West/North/East bounds.");
         }
 
-        return CalculateBoundingBox(area, model);
+        BoundingBox configuredBoundingBox = new(
+            South: area.South!.Value,
+            West: area.West!.Value,
+            North: area.North!.Value,
+            East: area.East!.Value);
+
+        ValidateBoundingBox(configuredBoundingBox, nameof(area));
+
+        return configuredBoundingBox;
     }
 
     /// <summary>
-    /// Calculates the bounding box to download from DEM providers.
-    /// It starts from the source area (explicit bounds if provided, otherwise center-based),
-    /// applies per-side padding, then expands only the short side to match
-    /// the target tile aspect ratio (<c>TilesX:TilesY</c>).
+    /// Calculates the padded bounding box to download from DEM providers.
     /// </summary>
-    /// <param name="area">Area configuration.</param>
-    /// <param name="model">Physical parameters of the model.</param>
-    /// <param name="paddingPercentPerSide">
-    /// Padding to add per side (for example <c>0.10</c> means +10% on each side).
-    /// </param>
-    /// <returns>Adjusted geographic bounding box for DEM download.</returns>
     public static BoundingBox CalculateDownloadBoundingBox(
         AreaOptions area,
         ModelOptions model,
         double paddingPercentPerSide)
     {
         BoundingBox sourceBoundingBox = CalculateSourceBoundingBox(area, model);
+        return ApplyPadding(sourceBoundingBox, paddingPercentPerSide);
+    }
 
-        return ApplyPaddingAndAspectRatio(
-            sourceBoundingBox,
-            model.TilesX,
-            model.TilesY,
-            paddingPercentPerSide);
+    /// <summary>
+    /// Expands the padded box to the minimum centered box representable by an integer tile grid.
+    /// </summary>
+    public static BoundingBox ExpandToMinimumTileGrid(
+        BoundingBox padded,
+        ModelOptions model,
+        out int tilesX,
+        out int tilesY,
+        out double snappedWidthKm,
+        out double snappedHeightKm)
+    {
+        double tileWidthKm = GetTileWidthKm(model);
+        double tileHeightKm = GetTileHeightKm(model);
+
+        if (tileWidthKm <= 0 || tileHeightKm <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(model),
+                "Tile size and scale must produce positive real-world tile dimensions.");
+        }
+
+        double paddedWidthKm = GetBoundingBoxWidthKm(padded);
+        double paddedHeightKm = GetBoundingBoxHeightKm(padded);
+
+        tilesX = Math.Max(1, (int)Math.Ceiling(paddedWidthKm / tileWidthKm));
+        tilesY = Math.Max(1, (int)Math.Ceiling(paddedHeightKm / tileHeightKm));
+
+        snappedWidthKm = tilesX * tileWidthKm;
+        snappedHeightKm = tilesY * tileHeightKm;
+
+        return ExpandBoundingBoxToSize(
+            padded,
+            snappedWidthKm,
+            snappedHeightKm);
     }
 
     /// <summary>
     /// Returns the width of a bounding box in real-world kilometers.
     /// </summary>
-    /// <param name="boundingBox">Bounding box to evaluate.</param>
-    /// <returns>Bounding box width in kilometers.</returns>
     public static double GetBoundingBoxWidthKm(BoundingBox boundingBox)
     {
         double centerLatitude = (boundingBox.South + boundingBox.North) / 2.0;
@@ -160,8 +153,6 @@ public static class GeoCalculator
     /// <summary>
     /// Returns the height of a bounding box in real-world kilometers.
     /// </summary>
-    /// <param name="boundingBox">Bounding box to evaluate.</param>
-    /// <returns>Bounding box height in kilometers.</returns>
     public static double GetBoundingBoxHeightKm(BoundingBox boundingBox)
     {
         return (boundingBox.North - boundingBox.South) * KilometersPerLatitudeDegree;
@@ -170,44 +161,19 @@ public static class GeoCalculator
     /// <summary>
     /// Returns the width/height ratio of a bounding box in real-world kilometers.
     /// </summary>
-    /// <param name="boundingBox">Bounding box to evaluate.</param>
-    /// <returns>The metric aspect ratio (width divided by height).</returns>
     public static double GetBoundingBoxAspectRatio(BoundingBox boundingBox)
     {
         double heightKm = GetBoundingBoxHeightKm(boundingBox);
-
         return GetBoundingBoxWidthKm(boundingBox) / heightKm;
     }
 
     /// <summary>
-    /// Applies per-side padding to a bounding box and expands only the short side
-    /// to match the requested aspect ratio.
+    /// Applies symmetric per-side padding to a bounding box.
     /// </summary>
-    /// <param name="source">Source bounding box.</param>
-    /// <param name="targetAspectX">Target aspect ratio numerator (width).</param>
-    /// <param name="targetAspectY">Target aspect ratio denominator (height).</param>
-    /// <param name="paddingPercentPerSide">Padding to add to each side.</param>
-    /// <returns>The adjusted bounding box.</returns>
-    public static BoundingBox ApplyPaddingAndAspectRatio(
+    public static BoundingBox ApplyPadding(
         BoundingBox source,
-        int targetAspectX,
-        int targetAspectY,
         double paddingPercentPerSide)
     {
-        if (targetAspectX <= 0)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(targetAspectX),
-                "Aspect X must be greater than zero.");
-        }
-
-        if (targetAspectY <= 0)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(targetAspectY),
-                "Aspect Y must be greater than zero.");
-        }
-
         if (paddingPercentPerSide < 0)
         {
             throw new ArgumentOutOfRangeException(
@@ -224,18 +190,6 @@ public static class GeoCalculator
         double paddedHeightKm =
             GetBoundingBoxHeightKm(source) * (1.0 + (paddingPercentPerSide * 2.0));
 
-        double targetAspect = (double)targetAspectX / targetAspectY;
-        double currentAspect = paddedWidthKm / paddedHeightKm;
-
-        if (currentAspect < targetAspect)
-        {
-            paddedWidthKm = paddedHeightKm * targetAspect;
-        }
-        else if (currentAspect > targetAspect)
-        {
-            paddedHeightKm = paddedWidthKm / targetAspect;
-        }
-
         return BuildCenteredBoundingBox(
             centerLatitude,
             centerLongitude,
@@ -244,13 +198,41 @@ public static class GeoCalculator
     }
 
     /// <summary>
-    /// Returns how many real-world meters are represented by a single
-    /// horizontal sample of the model.
+    /// Expands a box around its center to the requested real-world size.
     /// </summary>
-    /// <param name="model">Model parameters.</param>
-    /// <returns>Meters represented by one horizontal sample.</returns>
-    public static double GetMetersPerSample(
-        ModelOptions model)
+    public static BoundingBox ExpandBoundingBoxToSize(
+        BoundingBox source,
+        double widthKm,
+        double heightKm)
+    {
+        if (widthKm <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(widthKm),
+                "Width must be greater than zero.");
+        }
+
+        if (heightKm <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(heightKm),
+                "Height must be greater than zero.");
+        }
+
+        double centerLatitude = (source.South + source.North) / 2.0;
+        double centerLongitude = (source.West + source.East) / 2.0;
+
+        return BuildCenteredBoundingBox(
+            centerLatitude,
+            centerLongitude,
+            widthKm,
+            heightKm);
+    }
+
+    /// <summary>
+    /// Returns how many real-world meters are represented by a single horizontal sample.
+    /// </summary>
+    public static double GetMetersPerSample(ModelOptions model)
     {
         return model.HorizontalResolutionMm *
                model.Scale /
@@ -258,31 +240,37 @@ public static class GeoCalculator
     }
 
     /// <summary>
-    /// Returns the number of horizontal samples required
-    /// to represent the model width at the configured resolution.
+    /// Returns the number of horizontal samples required for the given model width.
     /// </summary>
-    /// <param name="model">Model parameters.</param>
-    /// <returns>Required sample count along the width.</returns>
     public static int GetRequiredWidthSamples(
+        double modelWidthMm,
         ModelOptions model)
     {
-        return (int)Math.Ceiling(
-            GetModelWidthMm(model) /
-            model.HorizontalResolutionMm);
+        if (modelWidthMm <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(modelWidthMm),
+                "Model width must be greater than zero.");
+        }
+
+        return (int)Math.Ceiling(modelWidthMm / model.HorizontalResolutionMm);
     }
 
     /// <summary>
-    /// Returns the number of horizontal samples required
-    /// to represent the model height at the configured resolution.
+    /// Returns the number of horizontal samples required for the given model height.
     /// </summary>
-    /// <param name="model">Model parameters.</param>
-    /// <returns>Required sample count along the height.</returns>
     public static int GetRequiredHeightSamples(
+        double modelHeightMm,
         ModelOptions model)
     {
-        return (int)Math.Ceiling(
-            GetModelHeightMm(model) /
-            model.HorizontalResolutionMm);
+        if (modelHeightMm <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(modelHeightMm),
+                "Model height must be greater than zero.");
+        }
+
+        return (int)Math.Ceiling(modelHeightMm / model.HorizontalResolutionMm);
     }
 
     private static BoundingBox BuildCenteredBoundingBox(

@@ -15,7 +15,7 @@ public sealed class StlGenerator
     /// <param name="outputPath">Destination STL file path.</param>
     /// <param name="options">Generation options for scale and base thickness.</param>
     /// <returns>Total number of triangles written to the STL file.</returns>
-    public int GenerateBinaryStl(
+    public static int GenerateBinaryStl(
         float[,] elevations,
         string outputPath,
         StlGenerationOptions options)
@@ -167,7 +167,7 @@ public sealed class StlGenerator
         double z = options.BaseThicknessMm + (elevationMeters * options.ElevationScaleMmPerMeter);
 
         // STL Y axis is flipped so north/south orientation matches the PNG preview.
-        int flippedY = (height - 1) - y;
+        int flippedY = height - 1 - y;
         return new Vector3(
             (float)(x * options.HorizontalStepMm),
             (float)(flippedY * options.HorizontalStepMm),
@@ -180,7 +180,7 @@ public sealed class StlGenerator
         int height,
         StlGenerationOptions options)
     {
-        int flippedY = (height - 1) - y;
+        int flippedY = height - 1 - y;
         return new Vector3(
             (float)(x * options.HorizontalStepMm),
             (float)(flippedY * options.HorizontalStepMm),

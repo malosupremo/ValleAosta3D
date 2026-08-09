@@ -16,16 +16,6 @@ public sealed class ModelOptions
     public int VerticalExaggeration { get; set; }
 
     /// <summary>
-    /// Number of tiles along the X axis.
-    /// </summary>
-    public int TilesX { get; set; }
-
-    /// <summary>
-    /// Number of tiles along the Y axis.
-    /// </summary>
-    public int TilesY { get; set; }
-
-    /// <summary>
     /// Size of each tile in millimeters.
     /// </summary>
     public int TileSizeMm { get; set; }
