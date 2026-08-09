@@ -34,4 +34,9 @@ public sealed class ModelOptions
     /// Desired horizontal resolution of the generated terrain.
     /// </summary>
     public double HorizontalResolutionMm { get; set; }
+
+    /// <summary>
+    /// Minimum base thickness applied under the terrain surface.
+    /// </summary>
+    public double BaseThicknessMm { get; set; } = 3.0;
 }

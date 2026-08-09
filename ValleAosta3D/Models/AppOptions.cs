@@ -19,4 +19,9 @@ public sealed class AppOptions
     /// Defines the folders used by the application.
     /// </summary>
     public FolderOptions Folders { get; set; } = new();
+
+    /// <summary>
+    /// Defines settings used to download DEM data from OpenTopography.
+    /// </summary>
+    public OpenTopographyOptions OpenTopography { get; set; } = new();
 }

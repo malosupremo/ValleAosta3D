@@ -6,7 +6,7 @@
 public sealed class FolderOptions
 {
     /// <summary>
-    /// Name of the folder used as cache.
+    /// Name of the root folder used as cache.
     /// </summary>
     public string Cache { get; set; } = "";
 

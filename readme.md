@@ -332,12 +332,48 @@ Data
 |
 +-- Cache
 |    |
-|    +-- cop30-valle-aosta.tif
+|    +-- Raw
+|    |    |
+|    |    +-- cop30-xxxxxxxxxxxxxxxx.tif
+|    |
+|    +-- Resampled
+|         |
+|         +-- resampled-xxxxxxxxxxxxxxxx.f32
+|         +-- resampled-xxxxxxxxxxxxxxxx.json
 |
 +-- Output
 ```
 
-Il progetto deve poter funzionare anche offline dopo il primo download.
+Ora il download DEM usa una cache deterministica basata su:
+
+- dataset (`DemType`)
+- coordinate del bounding box finale (dopo padding + aspect ratio)
+- formato output
+
+Il nome file è nel formato:
+
+```text
+{demType}-{hash16}.tif
+```
+
+Se i parametri sono identici, il file viene riusato e non viene scaricato di nuovo.
+
+Il progetto può quindi funzionare offline dopo il primo download.
+
+La griglia ridimensionata per il modello (`2700x1800`) viene salvata in:
+
+- `.f32` binario float32 (row-major)
+- `.json` con metadati (bbox, dimensioni, risoluzione, dataset)
+
+### Configurazione API Key (User Secrets)
+
+La chiave OpenTopography non va salvata in `appsettings.json`.
+
+Comando:
+
+```powershell
+dotnet user-secrets set "OpenTopography:ApiKey" "LA_TUA_API_KEY" --project .\ValleAosta3D\ValleAosta3D.csproj
+```
 
 ---
 

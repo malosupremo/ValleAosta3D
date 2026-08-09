@@ -11,11 +11,7 @@
 *.sln.docstates
 *.env
 
-#Data/Cache/*
-#Data/Output/*
-
-!Data/Cache/.gitkeep
-!Data/Output/.gitkeep
+/ValleAosta3D/Data/
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -433,3 +429,4 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+/ValleAosta3D/Data/Cache/Resampled
