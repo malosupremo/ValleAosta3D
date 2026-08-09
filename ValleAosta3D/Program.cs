@@ -183,6 +183,7 @@ else
 }
 
 string resampledDataPath = resampledCacheService.GetDataPathForKey(resampledCacheKey);
+ResampledDemWindowReader windowReader = new();
 
 Console.WriteLine();
 Console.Write("Generate STL tiles? [y/N]: ");
@@ -213,7 +214,6 @@ if (string.Equals(stlAnswer, "y", StringComparison.OrdinalIgnoreCase) ||
         BaseThicknessMm = options.Model.BaseThicknessMm
     };
 
-    ResampledDemWindowReader windowReader = new();
     StlGenerator stlGenerator = new();
     string stlFolder = Path.Combine(folders.Output, "Stl");
 
@@ -255,6 +255,18 @@ string? previewAnswer = Console.ReadLine();
 if (string.Equals(previewAnswer, "y", StringComparison.OrdinalIgnoreCase) ||
     string.Equals(previewAnswer, "yes", StringComparison.OrdinalIgnoreCase))
 {
+    Console.WriteLine();
+    Console.WriteLine("Loading resampled grid for preview...");
+
+    float[,] previewElevations = windowReader.ReadWindow(
+        resampledDataPath,
+        resampledMetadata.TargetWidth,
+        resampledMetadata.TargetHeight,
+        0,
+        0,
+        resampledMetadata.TargetWidth,
+        resampledMetadata.TargetHeight);
+
     string outputFile = Path.Combine(folders.Output, "preview.png");
-    HeightMapGenerator.GeneratePreviewPng(tiffPath, outputFile);
+    HeightMapGenerator.GeneratePreviewPng(previewElevations, outputFile);
 }

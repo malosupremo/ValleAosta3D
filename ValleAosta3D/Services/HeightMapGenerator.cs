@@ -182,6 +182,108 @@ public static class HeightMapGenerator
     }
 
     /// <summary>
+    /// Creates a grayscale PNG preview from an elevation grid.
+    /// </summary>
+    /// <param name="elevations">
+    /// Elevation grid indexed by [y, x].
+    /// </param>
+    /// <param name="outputFile">
+    /// Destination PNG file.
+    /// </param>
+    public static void GeneratePreviewPng(
+        float[,] elevations,
+        string outputFile)
+    {
+        int height = elevations.GetLength(0);
+        int width = elevations.GetLength(1);
+
+        if (width < 2 || height < 2)
+        {
+            throw new ArgumentException(
+                "Elevation grid must be at least 2x2 samples.",
+                nameof(elevations));
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("Elevation range");
+        Console.WriteLine("----------------");
+
+        float min = float.MaxValue;
+        float max = float.MinValue;
+
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                float value = elevations[y, x];
+
+                if (float.IsNaN(value) || value <= 0)
+                {
+                    continue;
+                }
+
+                min = Math.Min(min, value);
+                max = Math.Max(max, value);
+            }
+        }
+
+        if (min == float.MaxValue || max == float.MinValue)
+        {
+            throw new InvalidOperationException(
+                "Elevation grid does not contain valid positive samples.");
+        }
+
+        Console.WriteLine($"Min : {min:N2} m");
+        Console.WriteLine($"Max : {max:N2} m");
+
+        using Bitmap bitmap =
+            new(width, height, PixelFormat.Format24bppRgb);
+
+        Console.WriteLine();
+        Console.WriteLine($"Generating PNG ({width:N0} x {height:N0})...");
+
+        float range = max - min;
+
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                float value = elevations[y, x];
+                byte gray = 0;
+
+                if (!float.IsNaN(value) && value > 0)
+                {
+                    gray = range > 0f
+                        ? (byte)Math.Clamp((value - min) / range * 255f, 0f, 255f)
+                        : (byte)255;
+                }
+
+                bitmap.SetPixel(
+                    x,
+                    y,
+                    Color.FromArgb(gray, gray, gray));
+            }
+
+            if ((y + 1) % 100 == 0)
+            {
+                Console.Write(
+                    $"\rRendering row {y + 1:N0}/{height:N0}");
+            }
+        }
+
+        Directory.CreateDirectory(
+            Path.GetDirectoryName(outputFile)!);
+
+        bitmap.Save(
+            outputFile,
+            ImageFormat.Png);
+
+        Console.WriteLine();
+        Console.WriteLine();
+        Console.WriteLine($"Saved: {outputFile}");
+    }
+
+    /// <summary>
     /// Creates a hillshade PNG preview from a DEM GeoTIFF.
     /// </summary>
     /// <param name="inputFile">
